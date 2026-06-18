@@ -1,0 +1,31 @@
+{
+  "status": "ok",
+  "service": "python",
+  "algorithm": "CGNR",
+  "started_at": "2026-06-18T02:21:00.124238+00:00",
+  "ended_at": "2026-06-18T02:21:13.503002+00:00",
+  "total_time_seconds": 13.378714124992257,
+  "reconstruction_time_seconds": 0.9241448749962728,
+  "image_dimension": "60x60",
+  "iterations": 10,
+  "epsilon_final": 0.23972481962511694,
+  "residual_norm_final": 47.177234537988035,
+  "memory_used_bytes": 2966536192,
+  "memory_rss_bytes": 3073654784,
+  "cpu_user_seconds": 10.69578832,
+  "cpu_system_seconds": 1.81760572,
+  "cpu_percent": 0.0,
+  "apply_gain": true,
+  "model_file": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/data/H-1.csv",
+  "signal_file": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/data/G-1.csv",
+  "reduction_factor": 7.682537836863408e-08,
+  "regularization_lambda": 0.0007833322206397246,
+  "outputs": {
+    "dimension": "60x60",
+    "orientation": "column-major",
+    "csv": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z.csv",
+    "png": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z.png",
+    "png_raw": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z.png",
+    "png_visualization": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z_visualization.png"
+  }
+}

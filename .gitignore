@@ -1,0 +1,26 @@
+# System files
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# C++/CMake build outputs
+cpp_server/build/
+build/
+
+# Local caches
+.matplotlib-cache/
+
+# Large raw model files
+data/H-1.csv
+data/H-1.csv.zip
+data/__MACOSX/
+
+# Local-only temporary files
+tmp/
+
+# Local smoke artifacts from cache validation
+results/cpp_cgnr_1781789517329*
+results/cpp_cgnr_1781789517336*

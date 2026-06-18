@@ -1,0 +1,70 @@
+Desenvolvimento Integrado de Sistemas  
+ 
+ 
+Caracterização do Problema 
+Contexto
+Prof. Dr. Paulo R. Bueno 
+DAINF 
+UTFPR – Campus Curitiba
+Sistemas Distribuídos
+Um sistema distribuído é um conjunto de computadores 
+independentes que se apresenta a seus usuários como um 
+sistema único e coerente 
+Fonte: Sistemas Distribuídos, Tanenbaum, Andrew S., 1994.
+Sistemas Distribuídos
+•Acesso a recursos 
+•Transparência da distribuição 
+•Abertura 
+•Escalabilidade
+Sistemas Distribuídos
+Características 
+•Nenhuma máquina tem informações completas sobre o 
+estado do sistema; 
+•As máquinas tomam decisões tendo como base somente 
+informações locais; 
+•A falha de uma máquina não arruina o algoritmo;  
+•Não há nenhuma premissa implícita quanto à existência de 
+um relógio global.
+Sistemas Distribuídos
+•Ciladas 
+•A rede é confiável? 
+•O algoritmo está demasiadamente centralizado?  
+•O custo de processamento foi devidamente avaliado?  
+•Ações de contingência foram planejadas?
+Nosso contexto
+•Um processo distribuído entre um cliente 
+especializado e um servidor; 
+•Alto custo computacional; 
+•Necessita de gerenciamento de recursos 
+avançado;
+Nosso contexto
+Os sistemas de imagem por ultrassom são uteis em 
+diversas áreas da atividade humana. 
+Os exemplos mais comuns vão desde a área da saúde, 
+com exames de imagem para diagnóstico médico, até na 
+produção industrial, em inspeção de qualidade de 
+produtos e na busca por falhas e defeitos.
+Nosso contexto
+Os métodos de reconstrução de imagens de ultrassom baseados 
+em problemas inversos são inovações recentes para ultrassom e 
+têm demonstrado obter qualidade de imagem superior as 
+reconstruções convencionais baseadas em beamforming e delay-
+and-sum. 
+Contudo, o custo computacional desses algoritmos é alto, não 
+permitindo execução em tempo real, que é uma demanda já 
+estabelecida em ultrassom.
+Nosso contexto
+Objetivos: 
+•Reconstruir uma image a partir do sinal capturado pelo 
+cliente; 
+•Gerenciar os métodos de reconstrução conforme 
+escolha do usuário; 
+•Gerenciar os recursos disponíveis no servidor; 
+•Alcançar o máximo possível de eficiência.
+Imagens por ultrassom
+
+Imagens por ultrassom
+
+Imagens por ultrassom
+
+Imagens por ultrassom

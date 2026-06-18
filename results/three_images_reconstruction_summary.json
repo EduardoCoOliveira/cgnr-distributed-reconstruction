@@ -1,0 +1,35 @@
+[
+  {
+    "label": "Imagem 1 - G-1",
+    "python_csv": "results/python_cgnr_G-1_20260618T022100124238Z.csv",
+    "python_vis": "results/python_cgnr_G-1_20260618T022100124238Z_visualization.png",
+    "cpp_csv": "results/cpp_cgnr_1781749354619.csv",
+    "cpp_vis": "results/cpp_cgnr_1781749354619_visualization.png",
+    "max_abs_diff": 8.731149137020111e-11,
+    "mean_abs_diff": 2.9018262368624766e-12,
+    "python_min": -111541.5724298803,
+    "python_max": 259101.04387641334
+  },
+  {
+    "label": "Imagem 2 - G-2",
+    "python_csv": "results/python_cgnr_G-2-image2_20260618T022724708651Z.csv",
+    "python_vis": "results/python_cgnr_G-2-image2_20260618T022724708651Z_visualization.png",
+    "cpp_csv": "results/cpp_cgnr_1781749739799.csv",
+    "cpp_vis": "results/cpp_cgnr_1781749739799_visualization.png",
+    "max_abs_diff": 1.1641532182693481e-10,
+    "mean_abs_diff": 6.242139629260753e-12,
+    "python_min": -126600.959281721,
+    "python_max": 297790.5982494385
+  },
+  {
+    "label": "Imagem 3 - A-60x60",
+    "python_csv": "results/python_cgnr_A-60x60-image3_20260618T022737974569Z.csv",
+    "python_vis": "results/python_cgnr_A-60x60-image3_20260618T022737974569Z_visualization.png",
+    "cpp_csv": "results/cpp_cgnr_1781749780800.csv",
+    "cpp_vis": "results/cpp_cgnr_1781749780800_visualization.png",
+    "max_abs_diff": 0.00390625,
+    "mean_abs_diff": 0.00018114174612694317,
+    "python_min": -4800796387886.947,
+    "python_max": 6873856247024.986
+  }
+]

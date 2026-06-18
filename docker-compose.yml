@@ -1,0 +1,36 @@
+services:
+  python_server:
+    build:
+      context: .
+      dockerfile: python_server/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - MAX_CONCURRENT_RECONSTRUCTIONS=2
+
+  cpp_server:
+    build:
+      context: .
+      dockerfile: cpp_server/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - MAX_CONCURRENT_RECONSTRUCTIONS=2
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    depends_on:
+      - python_server
+      - cpp_server
+    volumes:
+      - ./results:/app/results
+      - ./data:/app/data
+    command: ["python", "client/client.py", "--requests", "2", "--signals", "data/G-1.csv", "data/G-2.csv", "--model", "data/H-1.csv", "--output", "results/client_comparison.json", "--python-url", "http://python_server:8000/reconstruct", "--cpp-url", "http://cpp_server:8001/reconstruct"]

@@ -1,0 +1,16 @@
+{
+  "python_csv": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z.csv",
+  "cpp_csv": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/cpp_cgnr_1781749354619.csv",
+  "python_png_raw": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z.png",
+  "python_png_visualization": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/python_cgnr_G-1_20260618T022100124238Z_visualization.png",
+  "cpp_png_raw": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/cpp_cgnr_1781749354619.png",
+  "cpp_png_visualization": "/Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/results/cpp_cgnr_1781749354619_visualization.png",
+  "orientation": "column-major",
+  "visualization": "spot_map_local_maxima_log_abs",
+  "shape": [
+    60,
+    60
+  ],
+  "max_abs_diff": 8.731149137020111e-11,
+  "mean_abs_diff": 2.9018262368624766e-12
+}
