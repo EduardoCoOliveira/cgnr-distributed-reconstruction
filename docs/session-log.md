@@ -87,3 +87,12 @@
 - Regenerada `results/three_images_visualization_gallery.png` com a visualização refinada.
 - Implementado cache no servidor C++ para matriz de modelo `H` e fator de redução, evitando reler e recalcular a matriz em requisições subsequentes com o mesmo `model_file`.
 - C++ recompilou com sucesso após a otimização de cache.
+
+## 2026-06-18
+
+- Inicializado repositório Git local.
+- Criado `.gitignore` para evitar versionar `H-1.csv`, `H-1.csv.zip`, ambientes virtuais, builds e caches.
+- Commit inicial criado: `831109c initial distributed reconstruction project`.
+- Repositório privado publicado no GitHub:
+  `https://github.com/EduardoCoOliveira/cgnr-distributed-reconstruction`.
+- Branch principal: `main`.
