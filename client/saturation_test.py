@@ -1,4 +1,4 @@
-"""Concurrent saturation tests for Python and C++ reconstruction services."""
+"""Testes concorrentes de saturação para os serviços de reconstrução Python e C++."""
 
 from __future__ import annotations
 

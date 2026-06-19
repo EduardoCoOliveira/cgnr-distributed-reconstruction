@@ -1,4 +1,4 @@
-"""Manual CGNR/CGNE reconstruction routines backed by NumPy/OpenBLAS."""
+"""Rotinas manuais de reconstrução CGNR/CGNE com NumPy/OpenBLAS."""
 
 from __future__ import annotations
 
@@ -26,17 +26,17 @@ MAX_ITERATIONS = 10
 
 @dataclass(frozen=True)
 class ReconstructionRequest:
-    """Normalized reconstruction request used by the service and tests."""
+    """Requisição de reconstrução normalizada usada pelo serviço e pelos testes."""
 
     signal_file: Path
     model_file: Path
-    apply_gain: bool = True
+    apply_gain: bool = False
     algorithm: Algorithm = "cgnr"
     output_dir: Path = Path("../results")
 
 
 def resolve_path(path: str | Path, base_dir: Path | None = None) -> Path:
-    """Resolve absolute or project-relative paths consistently."""
+    """Resolve caminhos absolutos ou relativos ao projeto de forma consistente."""
 
     candidate = Path(path)
     if candidate.is_absolute():
@@ -46,7 +46,7 @@ def resolve_path(path: str | Path, base_dir: Path | None = None) -> Path:
 
 
 def load_matrix_csv(path: Path) -> np.ndarray:
-    """Load a numeric CSV as a 2D float64 NumPy array."""
+    """Carrega um CSV numérico como matriz NumPy float64 bidimensional."""
 
     if not path.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {path}")
@@ -57,7 +57,7 @@ def load_matrix_csv(path: Path) -> np.ndarray:
 
 
 def load_signal_csv(path: Path) -> np.ndarray:
-    """Load a signal CSV as a contiguous 1D float64 vector."""
+    """Carrega um CSV de sinal como vetor float64 unidimensional contíguo."""
 
     data = load_matrix_csv(path)
     if 1 not in data.shape:
@@ -66,16 +66,16 @@ def load_signal_csv(path: Path) -> np.ndarray:
 
 
 def apply_signal_gain(g: np.ndarray) -> np.ndarray:
-    """Apply gamma_l = 100 + (1/20) * l * sqrt(l) to every signal sample."""
+    """Aplica gamma_l = 100 + (1/20) * l * sqrt(l) a cada amostra do sinal."""
 
-    # The assignment uses l as a 1-based sample index.
+    # O enunciado usa l como índice de amostra iniciado em 1.
     indices = np.arange(1, g.size + 1, dtype=np.float64)
     gamma = 100.0 + 0.05 * indices * np.sqrt(indices)
     return np.ascontiguousarray(g * gamma)
 
 
 def estimate_reduction_factor(H: np.ndarray, iterations: int = 12) -> float:
-    """Estimate ||H^T H||_2 with power iteration."""
+    """Estima ||H^T H||_2 com iteração de potência."""
 
     n = H.shape[1]
     v = np.ones(n, dtype=np.float64)
@@ -92,20 +92,20 @@ def estimate_reduction_factor(H: np.ndarray, iterations: int = 12) -> float:
 
 
 def compute_regularization_lambda(H: np.ndarray, g: np.ndarray) -> float:
-    """Compute lambda = max(abs(H^T g)) * 0.10."""
+    """Calcula lambda = max(abs(H^T g)) * 0.10."""
 
     htg = H.T @ g
     return float(np.max(np.abs(htg)) * 0.10)
 
 
 def _safe_divide(numerator: float, denominator: float) -> float:
-    if denominator <= np.finfo(np.float64).eps:
+    if denominator == 0.0:
         return 0.0
     return numerator / denominator
 
 
 def cgnr(H: np.ndarray, g: np.ndarray) -> tuple[np.ndarray, dict]:
-    """Run the exact CGNR recurrence requested in the assignment."""
+    """Executa a recorrência CGNR exata solicitada no trabalho."""
 
     f = np.zeros(H.shape[1], dtype=np.float64)
     r = np.ascontiguousarray(g - H @ f)
@@ -143,7 +143,7 @@ def cgnr(H: np.ndarray, g: np.ndarray) -> tuple[np.ndarray, dict]:
 
 
 def cgne(H: np.ndarray, g: np.ndarray) -> tuple[np.ndarray, dict]:
-    """Run CGNE as an optional algorithm using the recurrence from the brief."""
+    """Executa CGNE usando a recorrência definida no enunciado."""
 
     f = np.zeros(H.shape[1], dtype=np.float64)
     r = np.ascontiguousarray(g - H @ f)
@@ -178,7 +178,7 @@ def cgne(H: np.ndarray, g: np.ndarray) -> tuple[np.ndarray, dict]:
 
 
 def reconstruct(request: ReconstructionRequest) -> dict:
-    """Load data, run reconstruction, write artifacts, and return metadata."""
+    """Carrega dados, executa a reconstrução, grava artefatos e retorna metadados."""
 
     if request.algorithm not in ("cgnr", "cgne"):
         raise ValueError("algorithm deve ser 'cgnr' ou 'cgne'")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run focused reconstruction cases and generate Python/C++ comparison galleries."""
+"""Executa casos focados de reconstrução e gera galerias comparando Python/C++."""
 
 from __future__ import annotations
 
@@ -95,6 +95,21 @@ def result_link(path_text: str | None) -> str:
         return path.as_posix()
 
 
+def resolve_output_path(path_text: str) -> Path:
+    path = Path(path_text)
+    if path.is_absolute():
+        return path
+    candidates = [
+        (PROJECT_ROOT / path).resolve(),
+        (PROJECT_ROOT / "cpp_server" / path).resolve(),
+        path.resolve(),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 def image_cell(result: dict[str, Any]) -> str:
     outputs = result["outputs"]
     visual = result_link(outputs.get("png_visualization"))
@@ -163,7 +178,7 @@ def write_gallery(report: dict[str, Any], path: Path) -> None:
     for item in report["cases"]:
         row = []
         for side in ("python", "cpp"):
-            image_path = Path(item[side]["outputs"]["png_visualization"])
+            image_path = resolve_output_path(item[side]["outputs"]["png_visualization"])
             image = Image.open(image_path).convert("RGB")
             thumb_height = int(image.height * thumb_width / image.width)
             image = image.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
@@ -202,24 +217,25 @@ def main() -> None:
         "cases": [],
     }
     for case in CASE_GROUPS[args.case_group]:
-        payload = {
-            "signal_file": case["signal_file"],
-            "model_file": case["model_file"],
-            "apply_gain": True,
-            "algorithm": "cgnr",
-        }
-        python_result = post_reconstruction(args.python_url, payload, args.timeout)
-        cpp_result = post_reconstruction(args.cpp_url, payload, args.timeout)
-        comparison = compare_csv(python_result["outputs"]["csv"], cpp_result["outputs"]["csv"])
-        report["cases"].append(
-            {
-                "case": case,
-                "payload": payload,
-                "python": python_result,
-                "cpp": cpp_result,
-                "comparison": comparison,
+        for algorithm in ("cgnr", "cgne"):
+            payload = {
+                "signal_file": case["signal_file"],
+                "model_file": case["model_file"],
+                "apply_gain": False,
+                "algorithm": algorithm,
             }
-        )
+            python_result = post_reconstruction(args.python_url, payload, args.timeout)
+            cpp_result = post_reconstruction(args.cpp_url, payload, args.timeout)
+            comparison = compare_csv(python_result["outputs"]["csv"], cpp_result["outputs"]["csv"])
+            report["cases"].append(
+                {
+                    "case": case,
+                    "payload": payload,
+                    "python": python_result,
+                    "cpp": cpp_result,
+                    "comparison": comparison,
+                }
+            )
 
     report["ended_at"] = datetime.now(timezone.utc).isoformat()
     args.output_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

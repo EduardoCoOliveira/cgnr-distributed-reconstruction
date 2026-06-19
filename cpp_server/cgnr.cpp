@@ -63,7 +63,7 @@ double norm2(const std::vector<double>& v) {
 }
 
 double safe_divide(double numerator, double denominator) {
-    if (denominator <= std::numeric_limits<double>::epsilon()) {
+    if (denominator == 0.0) {
         return 0.0;
     }
     return numerator / denominator;
@@ -334,94 +334,163 @@ std::vector<unsigned char> normalize_oriented(const std::vector<double>& f, std:
     for (std::size_t row = 0; row < dim; ++row) {
         for (std::size_t col = 0; col < dim; ++col) {
             const double value = oriented_value(f, dim, row, col);
-            values[row * dim + col] = log_abs ? std::log1p(std::max(value, 0.0)) : value;
+            values[row * dim + col] = log_abs ? std::log1p(std::abs(value)) : value;
         }
     }
     if (log_abs) {
-        std::vector<double> sorted = values;
-        std::sort(sorted.begin(), sorted.end());
-        const double max_score = sorted.back();
-        if (max_score <= std::numeric_limits<double>::epsilon()) {
-            return std::vector<unsigned char>(dim * dim, 0);
-        }
-        const double percentile_threshold = sorted[static_cast<std::size_t>(std::floor(0.974 * static_cast<double>(sorted.size() - 1)))];
-        const double threshold = std::max(percentile_threshold, max_score * 0.93);
-        struct Candidate {
-            double value;
-            std::size_t row;
-            std::size_t col;
+        std::vector<double> filtered(dim * dim, 0.0);
+        const auto reflect = [dim](int index) -> std::size_t {
+            if (index < 0) {
+                return static_cast<std::size_t>(-index);
+            }
+            if (index >= static_cast<int>(dim)) {
+                return static_cast<std::size_t>(2 * static_cast<int>(dim) - index - 2);
+            }
+            return static_cast<std::size_t>(index);
         };
-        std::vector<Candidate> candidates;
         for (std::size_t row = 0; row < dim; ++row) {
             for (std::size_t col = 0; col < dim; ++col) {
-                const double value = values[row * dim + col];
-                if (value < threshold) {
-                    continue;
-                }
-                bool local_max = true;
-                const std::size_t r0 = row == 0 ? 0 : row - 1;
-                const std::size_t r1 = std::min(dim - 1, row + 1);
-                const std::size_t c0 = col == 0 ? 0 : col - 1;
-                const std::size_t c1 = std::min(dim - 1, col + 1);
-                for (std::size_t rr = r0; rr <= r1 && local_max; ++rr) {
-                    for (std::size_t cc = c0; cc <= c1; ++cc) {
-                        if (values[rr * dim + cc] > value) {
-                            local_max = false;
-                            break;
-                        }
+                std::vector<double> window;
+                window.reserve(9);
+                for (int dr = -1; dr <= 1; ++dr) {
+                    for (int dc = -1; dc <= 1; ++dc) {
+                        window.push_back(values[reflect(static_cast<int>(row) + dr) * dim + reflect(static_cast<int>(col) + dc)]);
                     }
                 }
-                if (local_max) {
-                    candidates.push_back({value, row, col});
-                }
+                std::sort(window.begin(), window.end());
+                filtered[row * dim + col] = 0.65 * window[window.size() / 2] + 0.35 * values[row * dim + col];
             }
         }
-        std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
-            return a.value > b.value;
-        });
-        const std::size_t max_spots = dim >= 60 ? 48 : 8;
-        const int min_distance = 2;
-        std::vector<Candidate> selected;
-        for (const Candidate& candidate : candidates) {
-            bool far_enough = true;
-            for (const Candidate& existing : selected) {
-                const int dr = static_cast<int>(candidate.row) - static_cast<int>(existing.row);
-                const int dc = static_cast<int>(candidate.col) - static_cast<int>(existing.col);
-                if (dr * dr + dc * dc < min_distance * min_distance) {
-                    far_enough = false;
+        const std::size_t radius = dim <= 30 ? 2 : 3;
+        std::vector<double> enhanced(dim * dim, 0.0);
+        const int r = static_cast<int>(radius);
+        const double area = static_cast<double>((2 * r + 1) * (2 * r + 1));
+        std::vector<double> local_detail(dim * dim, 0.0);
+        for (std::size_t row = 0; row < dim; ++row) {
+            for (std::size_t col = 0; col < dim; ++col) {
+                double sum = 0.0;
+                for (int dr = -r; dr <= r; ++dr) {
+                    for (int dc = -r; dc <= r; ++dc) {
+                        sum += filtered[reflect(static_cast<int>(row) + dr) * dim + reflect(static_cast<int>(col) + dc)];
+                    }
+                }
+                const double background = sum / area;
+                local_detail[row * dim + col] = std::max(filtered[row * dim + col] - background, 0.0);
+            }
+        }
+        constexpr int detail_radius = 1;
+        constexpr double detail_area = 9.0;
+        for (std::size_t row = 0; row < dim; ++row) {
+            for (std::size_t col = 0; col < dim; ++col) {
+                double sum = 0.0;
+                for (int dr = -detail_radius; dr <= detail_radius; ++dr) {
+                    for (int dc = -detail_radius; dc <= detail_radius; ++dc) {
+                        sum += local_detail[reflect(static_cast<int>(row) + dr) * dim + reflect(static_cast<int>(col) + dc)];
+                    }
+                }
+                enhanced[row * dim + col] = sum / detail_area + 0.06 * filtered[row * dim + col];
+            }
+        }
+        std::vector<double> positive;
+        positive.reserve(enhanced.size());
+        for (double value : enhanced) {
+            if (value > std::numeric_limits<double>::epsilon()) {
+                positive.push_back(value);
+            }
+        }
+        if (positive.empty()) {
+            return std::vector<unsigned char>(dim * dim, 0);
+        }
+        std::sort(positive.begin(), positive.end());
+        double upper = positive[static_cast<std::size_t>(std::floor(0.995 * static_cast<double>(positive.size() - 1)))];
+        if (upper <= std::numeric_limits<double>::epsilon()) {
+            upper = positive.back();
+        }
+        std::vector<unsigned char> pixels(dim * dim, 0);
+        if (upper <= std::numeric_limits<double>::epsilon()) {
+            return pixels;
+        }
+        for (std::size_t i = 0; i < enhanced.size(); ++i) {
+            const double normalized = std::pow(std::clamp(enhanced[i] / upper, 0.0, 1.0), 1.55);
+            const double scaled = normalized * 56.0;
+            pixels[i] = static_cast<unsigned char>(scaled);
+        }
+        std::vector<double> sorted_values = filtered;
+        std::sort(sorted_values.begin(), sorted_values.end());
+        const double max_score = sorted_values.back();
+        if (max_score > std::numeric_limits<double>::epsilon()) {
+            struct Spot {
+                double value;
+                std::size_t row;
+                std::size_t col;
+            };
+            std::vector<Spot> candidates;
+            const double percentile_threshold = sorted_values[static_cast<std::size_t>(std::floor(0.982 * static_cast<double>(sorted_values.size() - 1)))];
+            const double threshold = std::max(percentile_threshold, max_score * 0.86);
+            for (std::size_t row = 0; row < dim; ++row) {
+                for (std::size_t col = 0; col < dim; ++col) {
+                    const double value = filtered[row * dim + col];
+                    if (value < threshold) {
+                        continue;
+                    }
+                    bool local_max = true;
+                    for (int dr = -1; dr <= 1 && local_max; ++dr) {
+                        for (int dc = -1; dc <= 1; ++dc) {
+                            if (filtered[reflect(static_cast<int>(row) + dr) * dim + reflect(static_cast<int>(col) + dc)] > value) {
+                                local_max = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (local_max) {
+                        candidates.push_back({value, row, col});
+                    }
+                }
+            }
+            std::sort(candidates.begin(), candidates.end(), [](const Spot& a, const Spot& b) {
+                return a.value > b.value;
+            });
+            const std::size_t max_spots = dim >= 60 ? 72 : 14;
+            const int min_distance = dim >= 60 ? 3 : 2;
+            std::vector<Spot> selected;
+            for (const Spot& candidate : candidates) {
+                bool far_enough = true;
+                for (const Spot& existing : selected) {
+                    const int dr = static_cast<int>(candidate.row) - static_cast<int>(existing.row);
+                    const int dc = static_cast<int>(candidate.col) - static_cast<int>(existing.col);
+                    if (dr * dr + dc * dc < min_distance * min_distance) {
+                        far_enough = false;
+                        break;
+                    }
+                }
+                if (far_enough) {
+                    selected.push_back(candidate);
+                }
+                if (selected.size() >= max_spots) {
                     break;
                 }
             }
-            if (far_enough) {
-                selected.push_back(candidate);
+            double low = selected.empty() ? 0.0 : selected.front().value;
+            double high = low;
+            for (const Spot& spot : selected) {
+                low = std::min(low, spot.value);
+                high = std::max(high, spot.value);
             }
-            if (selected.size() >= max_spots) {
-                break;
-            }
-        }
-        std::vector<unsigned char> pixels(dim * dim, 0);
-        if (selected.empty()) {
-            return pixels;
-        }
-        double min_selected = selected.front().value;
-        double max_selected = selected.front().value;
-        for (const Candidate& candidate : selected) {
-            min_selected = std::min(min_selected, candidate.value);
-            max_selected = std::max(max_selected, candidate.value);
-        }
-        for (const Candidate& candidate : selected) {
-            const double normalized = (max_selected - min_selected <= std::numeric_limits<double>::epsilon())
-                                          ? 1.0
-                                          : (candidate.value - min_selected) / (max_selected - min_selected);
-            const auto intensity = static_cast<unsigned char>(std::clamp(0.45 + 0.55 * normalized, 0.0, 1.0) * 255.0);
-            pixels[candidate.row * dim + candidate.col] = std::max(pixels[candidate.row * dim + candidate.col], intensity);
-            if (dim >= 60) {
-                const auto secondary = static_cast<unsigned char>(static_cast<double>(intensity) * 0.72);
-                if (candidate.row + 1 < dim) {
-                    pixels[(candidate.row + 1) * dim + candidate.col] = std::max(pixels[(candidate.row + 1) * dim + candidate.col], secondary);
-                }
-                if (candidate.col + 1 < dim) {
-                    pixels[candidate.row * dim + candidate.col + 1] = std::max(pixels[candidate.row * dim + candidate.col + 1], secondary);
+            const int half_size = dim >= 60 ? 1 : 0;
+            for (const Spot& spot : selected) {
+                const double normalized = high - low <= std::numeric_limits<double>::epsilon()
+                                              ? 1.0
+                                              : (spot.value - low) / (high - low);
+                const auto intensity = static_cast<unsigned char>((0.62 + 0.38 * normalized) * 255.0);
+                for (int rr = std::max(0, static_cast<int>(spot.row) - half_size);
+                     rr <= std::min(static_cast<int>(dim) - 1, static_cast<int>(spot.row) + half_size);
+                     ++rr) {
+                    for (int cc = std::max(0, static_cast<int>(spot.col) - half_size);
+                         cc <= std::min(static_cast<int>(dim) - 1, static_cast<int>(spot.col) + half_size);
+                         ++cc) {
+                        pixels[static_cast<std::size_t>(rr) * dim + static_cast<std::size_t>(cc)] =
+                            std::max<unsigned char>(pixels[static_cast<std::size_t>(rr) * dim + static_cast<std::size_t>(cc)], intensity);
+                    }
                 }
             }
         }
@@ -480,6 +549,7 @@ const std::vector<std::string>& glyph(char c) {
     static const std::vector<std::string> cap_z{"111", "001", "010", "100", "111"};
     static const std::vector<std::string> dash{"000", "000", "111", "000", "000"};
     static const std::vector<std::string> colon{"000", "010", "000", "010", "000"};
+    static const std::vector<std::string> slash{"001", "001", "010", "100", "100"};
     static const std::vector<std::string> low_o{"000", "111", "101", "101", "111"};
     static const std::vector<std::string> low_g{"011", "100", "101", "011", "001", "110"};
     static const std::vector<std::string> blank{"000", "000", "000", "000", "000"};
@@ -489,7 +559,7 @@ const std::vector<std::string>& glyph(char c) {
         case 'L': return cap_l; case 'O': return cap_o; case 'G': return cap_g;
         case 'A': return cap_a; case 'C': return cap_c; case 'D': return cap_d; case 'E': return cap_e; case 'I': return cap_i;
         case 'N': return cap_n; case 'P': return cap_p; case 'R': return cap_r; case 'S': return cap_s; case 'T': return cap_t;
-        case 'X': return cap_x; case 'Z': return cap_z; case '-': return dash; case ':': return colon;
+        case 'X': return cap_x; case 'Z': return cap_z; case '-': return dash; case ':': return colon; case '/': return slash;
         case 'o': return low_o; case 'g': return low_g; default: return blank;
     }
 }
@@ -509,6 +579,23 @@ void draw_text(std::vector<unsigned char>& pixels, std::size_t width, std::size_
     }
 }
 
+std::string display_time(std::string text) {
+    std::tm tm{};
+    std::istringstream input(text);
+    input >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
+    if (!input.fail()) {
+        const std::time_t utc = timegm(&tm);
+        const std::time_t sao_paulo = utc - 3 * 60 * 60;
+        std::tm local{};
+        gmtime_r(&sao_paulo, &local);
+        std::ostringstream output;
+        output << std::put_time(&local, "%d/%m/%Y %H:%M:%S");
+        return output.str();
+    }
+    std::replace(text.begin(), text.end(), 'T', ' ');
+    return text;
+}
+
 void save_png(const std::vector<double>& f, std::size_t dim, const std::string& path) {
     write_png_pixels(normalize_oriented(f, dim, false), dim, dim, path);
 }
@@ -522,35 +609,26 @@ void save_visualization_png(
     const std::string& ended_at,
     int iterations
 ) {
-    const std::size_t scale = 4;
-    const std::size_t plot = dim * scale;
-    const std::size_t left = 42;
-    const std::size_t top = 28;
-    const std::size_t width = left + plot + 18;
-    const std::size_t height = top + plot + 72;
+    const std::size_t scale = 2;
+    const std::size_t preview = dim * scale;
+    const std::size_t padding = 8;
+    const std::size_t panel = 260;
+    const std::size_t width = padding * 3 + preview + panel;
+    const std::size_t height = std::max(preview + padding * 2, static_cast<std::size_t>(120));
     std::vector<unsigned char> canvas(width * height, 255);
-    const std::vector<unsigned char> image = normalize_oriented(f, dim, true);
-    draw_text(canvas, width, left + plot / 2 - 12, 8, "LOG", 0, 2);
+    const std::vector<unsigned char> image = normalize_oriented(f, dim, false);
     for (std::size_t row = 0; row < dim; ++row) {
         for (std::size_t col = 0; col < dim; ++col) {
             const unsigned char color = image[row * dim + col];
-            draw_rect(canvas, width, left + col * scale, top + row * scale, scale, scale, color);
+            draw_rect(canvas, width, padding + col * scale, padding + row * scale, scale, scale, color);
         }
     }
-    for (std::size_t tick = 10; tick <= dim; tick += 10) {
-        const std::size_t pos = tick - 1;
-        const std::size_t x = left + pos * scale;
-        const std::size_t y = top + pos * scale;
-        draw_rect(canvas, width, x, top + plot, 1, 5, 0);
-        draw_rect(canvas, width, left - 5, y, 5, 1, 0);
-        draw_text(canvas, width, x - 5, top + plot + 9, std::to_string(tick), 0, 1);
-        draw_text(canvas, width, 14, y - 4, std::to_string(tick), 0, 1);
-    }
-    const std::size_t meta_y = top + plot + 24;
-    draw_text(canvas, width, 4, meta_y, "ALG " + algorithm, 0, 1);
-    draw_text(canvas, width, 4, meta_y + 9, "START " + started_at, 0, 1);
-    draw_text(canvas, width, 4, meta_y + 18, "END " + ended_at, 0, 1);
-    draw_text(canvas, width, 4, meta_y + 27, "PIX " + std::to_string(dim) + "X" + std::to_string(dim) + " ITER " + std::to_string(iterations), 0, 1);
+    const std::size_t text_x = padding * 2 + preview;
+    draw_text(canvas, width, text_x, padding, "ALG " + algorithm, 0, 2);
+    draw_text(canvas, width, text_x, padding + 18, "START " + display_time(started_at), 0, 2);
+    draw_text(canvas, width, text_x, padding + 36, "END " + display_time(ended_at), 0, 2);
+    draw_text(canvas, width, text_x, padding + 54, "PIX " + std::to_string(dim) + "X" + std::to_string(dim), 0, 2);
+    draw_text(canvas, width, text_x, padding + 72, "ITER " + std::to_string(iterations), 0, 2);
     write_png_pixels(canvas, width, height, path);
 }
 

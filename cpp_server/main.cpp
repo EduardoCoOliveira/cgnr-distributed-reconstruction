@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <netinet/in.h>
 #include <sstream>
@@ -12,6 +13,7 @@
 #include <string>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 namespace {
 
@@ -102,7 +104,7 @@ void handle_client(int client, int max_concurrent) {
         ReconstructionInput input;
         input.signal_file = project_path(extract_string(body, "signal_file"));
         input.model_file = project_path(extract_string(body, "model_file"));
-        input.apply_gain = extract_bool(body, "apply_gain", true);
+        input.apply_gain = extract_bool(body, "apply_gain", false);
         input.algorithm = extract_string(body, "algorithm", "cgnr");
         input.output_dir = (std::filesystem::current_path().parent_path() / "results").string();
         if (input.algorithm != "cgnr" && input.algorithm != "cgne") {
@@ -129,6 +131,63 @@ int main(int argc, char** argv) {
         const std::string output = argc > 2 ? argv[2] : "../results/cpp_blas_report.json";
         run_blas_tests(512, output);
         std::cout << "BLAS report written to " << output << "\n";
+        return 0;
+    }
+    if (argc > 1 && std::string(argv[1]) == "--reconstruct") {
+        if (argc < 5) {
+            throw std::runtime_error("uso: --reconstruct <signal_file> <model_file> <algorithm> [apply_gain] [output_dir]");
+        }
+        ReconstructionInput input;
+        input.signal_file = project_path(argv[2]);
+        input.model_file = project_path(argv[3]);
+        input.algorithm = argv[4];
+        input.apply_gain = argc > 5 ? std::string(argv[5]) == "true" : false;
+        input.output_dir = argc > 6 ? argv[6] : (std::filesystem::current_path().parent_path() / "results").string();
+        const ReconstructionResult result = reconstruct(input);
+        std::cout << result_to_json(result) << "\n";
+        return 0;
+    }
+    if (argc > 1 && std::string(argv[1]) == "--reconstruct-standard-set") {
+        struct Case {
+            std::string group;
+            std::string name;
+            std::string signal;
+            std::string model;
+        };
+        const std::vector<Case> cases{
+            {"gabarito", "g-30x30-1", "data/g-30x30-1.csv", "data/H-2.csv"},
+            {"gabarito", "g-30x30-2", "data/g-30x30-2.csv", "data/H-2.csv"},
+            {"gabarito", "G-1", "data/G-1.csv", "data/H-1.csv"},
+            {"gabarito", "G-2", "data/G-2.csv", "data/H-1.csv"},
+            {"sem-gabarito", "A-30x30-1", "data/A-30x30-1.csv", "data/H-2.csv"},
+            {"sem-gabarito", "A-60x60-1", "data/A-60x60-1.csv", "data/H-1.csv"},
+        };
+        const std::string output_dir = argc > 2 ? argv[2] : (std::filesystem::current_path().parent_path() / "results").string();
+        const std::string output_json = argc > 3 ? argv[3] : (std::filesystem::path(output_dir) / "cpp_standard_set_results.json").string();
+        std::ofstream out(output_json);
+        out << "[";
+        bool first = true;
+        for (const Case& item : cases) {
+            for (const std::string algorithm : {"cgnr", "cgne"}) {
+                ReconstructionInput input;
+                input.signal_file = project_path(item.signal);
+                input.model_file = project_path(item.model);
+                input.algorithm = algorithm;
+                input.apply_gain = false;
+                input.output_dir = output_dir;
+                const ReconstructionResult result = reconstruct(input);
+                if (!first) {
+                    out << ",";
+                }
+                first = false;
+                out << "{\"group\":\"" << item.group << "\",\"name\":\"" << item.name
+                    << "\",\"algorithm\":\"" << result.algorithm << "\",\"result\":" << result_to_json(result) << "}";
+                std::cout << item.group << " " << item.name << " " << result.algorithm
+                          << ": iter=" << result.iterations << " residual=" << result.residual_norm_final << "\n";
+            }
+        }
+        out << "]";
+        std::cout << "Batch report written to " << output_json << "\n";
         return 0;
     }
 

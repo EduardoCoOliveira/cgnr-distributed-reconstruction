@@ -13,7 +13,7 @@ struct Matrix {
 struct ReconstructionInput {
     std::string signal_file;
     std::string model_file;
-    bool apply_gain{true};
+    bool apply_gain{false};
     std::string algorithm{"cgnr"};
     std::string output_dir{"../results"};
 };

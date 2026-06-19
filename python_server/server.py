@@ -1,4 +1,4 @@
-"""FastAPI reconstruction service with saturation control."""
+"""Serviço FastAPI de reconstrução com controle de saturação."""
 
 from __future__ import annotations
 
@@ -23,11 +23,11 @@ app = FastAPI(title="Python CGNR Reconstruction Server", version="1.0.0")
 
 
 class ReconstructPayload(BaseModel):
-    """REST payload for image reconstruction."""
+    """Payload REST para reconstrução de imagem."""
 
     signal_file: str
     model_file: str
-    apply_gain: bool = True
+    apply_gain: bool = False
     algorithm: str = Field(default="cgnr", pattern="^(cgnr|cgne)$")
 
 

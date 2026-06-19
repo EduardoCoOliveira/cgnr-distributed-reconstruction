@@ -1,4 +1,4 @@
-"""Generate the final comparative Markdown report from JSON artifacts."""
+"""Gera o relatório comparativo final em Markdown a partir dos artefatos JSON."""
 
 from __future__ import annotations
 
@@ -46,12 +46,25 @@ def client_summary(report) -> str:
             "Ele gera uma sequência única de sinais e envia cada payload para Python e C++, "
             "mantendo os mesmos sinais para as duas versões.\n"
         )
-    rows = ["| Serviço | Algoritmo | Status | Iterações | Tempo total (s) | Latência cliente (s) |", "|---|---|---|---:|---:|---:|"]
+    rows = [
+        "| Serviço | Sinal | Modelo | Ganho | Algoritmo | Status | Imagem | Iterações | Tempo reconstrução (s) | Latência cliente (s) |",
+        "|---|---|---|---|---|---|---|---:|---:|---:|",
+    ]
     for item in report.get("results", []):
         response = item.get("response", {})
+        payload = item.get("payload", {})
+        outputs = response.get("outputs", {})
+        visual = outputs.get("png_visualization") or outputs.get("png") or "-"
+        if visual != "-":
+            try:
+                visual = Path(visual).resolve().relative_to(RESULTS).as_posix()
+            except ValueError:
+                pass
         rows.append(
-            f"| {item.get('target')} | {response.get('algorithm', '-')} | {response.get('status')} | "
-            f"{response.get('iterations', '-')} | {response.get('total_time_seconds', 0) or 0:.6f} | "
+            f"| {item.get('target')} | `{payload.get('signal_file', '-')}` | `{payload.get('model_file', '-')}` | "
+            f"{payload.get('apply_gain', '-')} | {response.get('algorithm', payload.get('algorithm', '-'))} | "
+            f"{response.get('status')} | {visual} | {response.get('iterations', '-')} | "
+            f"{response.get('reconstruction_time_seconds', 0) or 0:.6f} | "
             f"{response.get('client_latency_seconds', 0) or 0:.6f} |"
         )
     return "\n".join(rows) + "\n"
@@ -160,7 +173,7 @@ Quando `results/real_reconstruction_comparison_summary.json` estiver presente, a
 
 {real_reconstruction_summary(real_reconstruction)}
 
-As reconstruções usam orientação column-major para compatibilidade com a visualização típica em MATLAB/Octave. Cada execução salva uma imagem pura (`png_raw`) e uma imagem de visualização (`png_visualization`) com escala logarítmica e eixos.
+As reconstruções usam orientação column-major para compatibilidade com a visualização típica em MATLAB/Octave. Cada execução salva uma imagem pura (`png_raw`) e uma imagem de visualização (`png_visualization`) baseada na mesma imagem normalizada, sem escala logarítmica, filtros ou eixos.
 As visualizações incluem identificação do algoritmo, data/hora de início, data/hora de término da reconstrução, tamanho em pixels e número de iterações. Os mesmos dados também ficam salvos no JSON de metadados de cada imagem.
 
 ## Testes de Saturação - Python

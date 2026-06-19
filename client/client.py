@@ -1,4 +1,4 @@
-"""Client that sends the same reconstruction sequence to Python and C++ services."""
+"""Cliente que envia a mesma sequência de reconstrução aos serviços Python e C++."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ DEFAULT_TARGETS = [
 
 
 def post_with_retry(url: str, payload: dict[str, Any], timeout: float, retries: int) -> dict[str, Any]:
-    """POST with retry, timeout and standardized failure output."""
+    """Envia POST com retentativa, timeout e saída de falha padronizada."""
 
     last_error = "unknown error"
     for attempt in range(retries + 1):
@@ -67,7 +67,7 @@ def run_client(
     max_interval: float,
     seed: int | None = None,
 ) -> dict[str, Any]:
-    """Send random interval requests to both services using the same payloads."""
+    """Envia requisições em intervalos aleatórios aos dois serviços com os mesmos payloads."""
 
     rng = random.Random(seed)
     process = psutil.Process()

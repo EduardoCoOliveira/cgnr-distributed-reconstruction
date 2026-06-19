@@ -1,4 +1,4 @@
-"""BLAS-backed operation benchmarks for the Python implementation."""
+"""Medições de operações apoiadas por BLAS para a implementação Python."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _measure(name: str, operation):
 
 
 def run_blas_tests(size: int = 512, output: Path = Path("../results/python_blas_report.json")) -> dict:
-    """Run MN, aM and Ma operations through NumPy's BLAS integration."""
+    """Executa operações MN, aM e Ma pela integração BLAS do NumPy."""
 
     rng = np.random.default_rng(42)
     M = np.ascontiguousarray(rng.normal(size=(size, size)))
