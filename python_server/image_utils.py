@@ -44,7 +44,7 @@ def vector_to_image(vector: np.ndarray, dimension: int) -> np.ndarray:
 def save_visualization_png(image: np.ndarray, path: Path) -> None:
     """Save a report-style spot-map visualization with title and axes."""
 
-    log_image = np.log1p(np.abs(image))
+    log_image = np.log1p(np.maximum(image, 0.0))
     spot_image = build_spot_map(log_image)
     fig, ax = plt.subplots(figsize=(4.2, 4.2), dpi=160)
     ax.imshow(spot_image, cmap="gray", origin="upper", vmin=0.0, vmax=1.0, interpolation="nearest")
@@ -62,7 +62,11 @@ def save_visualization_png(image: np.ndarray, path: Path) -> None:
 def build_spot_map(score: np.ndarray) -> np.ndarray:
     """Keep only strong local maxima so the visualization resembles the reference plot."""
 
-    threshold = max(float(np.percentile(score, 97.4)), float(np.max(score)) * 0.30)
+    max_score = float(np.max(score))
+    if max_score <= np.finfo(np.float64).eps:
+        return np.zeros_like(score, dtype=np.float64)
+
+    threshold = max(float(np.percentile(score, 97.4)), max_score * 0.93)
     candidates: list[tuple[float, int, int]] = []
     rows, cols = score.shape
     for row in range(rows):
@@ -78,7 +82,7 @@ def build_spot_map(score: np.ndarray) -> np.ndarray:
                 candidates.append((value, row, col))
 
     candidates.sort(reverse=True)
-    max_spots = 72 if rows >= 60 else 30
+    max_spots = 48 if rows >= 60 else 8
     min_distance = 2
     selected: list[tuple[float, int, int]] = []
     for value, row, col in candidates:

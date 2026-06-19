@@ -29,30 +29,76 @@ cp /Users/eduardooliveira/Downloads/H-1.csv.zip data/
 unzip -o data/H-1.csv.zip -d data
 ```
 
-## Servidor Python
+Arquivos esperados para a bateria completa:
+
+- `data/H-1.csv`
+- `data/H-2.csv`
+- `data/g-30x30-1.csv`
+- `data/g-30x30-2.csv`
+- `data/G-1.csv`
+- `data/G-2.csv`
+- `data/A-30x30-1.csv`
+- `data/A-60x60-1.csv`
+
+## Preparar Ambiente
+
+Em Ubuntu/Debian:
 
 ```bash
-cd /Users/eduardooliveira/codigos/cgnr-distributed-reconstruction
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip build-essential cmake libopenblas-dev pkg-config
+```
+
+Depois, na raiz do projeto:
+
+```bash
 python3 -m venv python_server/.venv
 source python_server/.venv/bin/activate
 pip install -r python_server/requirements.txt
+```
+
+## Servidor Python
+
+```bash
 ./scripts/run_python.sh
 ```
+
+O servidor Python sobe em `http://localhost:8000`.
 
 ## Servidor C++
 
 ```bash
-cd /Users/eduardooliveira/codigos/cgnr-distributed-reconstruction
 ./scripts/run_cpp.sh
 ```
+
+O servidor C++ sobe em `http://localhost:8001`.
 
 ## Cliente
 
 Com os dois servidores ativos:
 
 ```bash
-cd /Users/eduardooliveira/codigos/cgnr-distributed-reconstruction/client
-python client.py --requests 2 --signals data/G-1.csv data/G-2.csv --model data/H-1.csv
+python client/client.py --requests 2 --signals data/G-1.csv data/G-2.csv --model data/H-1.csv
+```
+
+## Galerias Focadas
+
+Com os dois servidores ativos, gere as galerias comparativas Python/C++:
+
+```bash
+python_server/.venv/bin/python scripts/run_gabarito_focus.py \
+  --case-group gabarito \
+  --output-json results/gabarito_focus_results.json \
+  --output-index results/gabarito_focus_index.md \
+  --output-gallery results/gabarito_focus_gallery.png
+```
+
+```bash
+python_server/.venv/bin/python scripts/run_gabarito_focus.py \
+  --case-group sem-gabarito \
+  --output-json results/sem_gabarito_focus_results.json \
+  --output-index results/sem_gabarito_focus_index.md \
+  --output-gallery results/sem_gabarito_focus_gallery.png
 ```
 
 ## Testes

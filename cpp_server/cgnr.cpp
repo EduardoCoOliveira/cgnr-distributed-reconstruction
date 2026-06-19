@@ -334,15 +334,18 @@ std::vector<unsigned char> normalize_oriented(const std::vector<double>& f, std:
     for (std::size_t row = 0; row < dim; ++row) {
         for (std::size_t col = 0; col < dim; ++col) {
             const double value = oriented_value(f, dim, row, col);
-            values[row * dim + col] = log_abs ? std::log1p(std::abs(value)) : value;
+            values[row * dim + col] = log_abs ? std::log1p(std::max(value, 0.0)) : value;
         }
     }
     if (log_abs) {
         std::vector<double> sorted = values;
         std::sort(sorted.begin(), sorted.end());
-        const double percentile_threshold = sorted[static_cast<std::size_t>(std::floor(0.974 * static_cast<double>(sorted.size() - 1)))];
         const double max_score = sorted.back();
-        const double threshold = std::max(percentile_threshold, max_score * 0.30);
+        if (max_score <= std::numeric_limits<double>::epsilon()) {
+            return std::vector<unsigned char>(dim * dim, 0);
+        }
+        const double percentile_threshold = sorted[static_cast<std::size_t>(std::floor(0.974 * static_cast<double>(sorted.size() - 1)))];
+        const double threshold = std::max(percentile_threshold, max_score * 0.93);
         struct Candidate {
             double value;
             std::size_t row;
@@ -376,7 +379,7 @@ std::vector<unsigned char> normalize_oriented(const std::vector<double>& f, std:
         std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
             return a.value > b.value;
         });
-        const std::size_t max_spots = dim >= 60 ? 72 : 30;
+        const std::size_t max_spots = dim >= 60 ? 48 : 8;
         const int min_distance = 2;
         std::vector<Candidate> selected;
         for (const Candidate& candidate : candidates) {
