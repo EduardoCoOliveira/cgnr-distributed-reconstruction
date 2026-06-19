@@ -78,8 +78,15 @@ O servidor C++ sobe em `http://localhost:8001`.
 Com os dois servidores ativos:
 
 ```bash
-python client/client.py --requests 2 --signals data/G-1.csv data/G-2.csv --model data/H-1.csv
+python client/client.py \
+  --requests 6 \
+  --signals data/g-30x30-1.csv data/g-30x30-2.csv data/G-1.csv data/G-2.csv data/A-30x30-1.csv data/A-60x60-1.csv \
+  --models data/H-1.csv data/H-2.csv \
+  --output results/client_comparison.json
 ```
+
+O cliente monta uma sequência única de sinais e envia os mesmos payloads para Python e C++.
+O ganho (`apply_gain`), o algoritmo e o modelo compatível com o sinal são escolhidos aleatoriamente.
 
 ## Galerias Focadas
 
@@ -105,6 +112,26 @@ python_server/.venv/bin/python scripts/run_gabarito_focus.py \
 
 ```bash
 ./scripts/run_all_tests.sh
+```
+
+Para teste de sobrecarga com os servidores já ativos:
+
+```bash
+python client/saturation_test.py \
+  --url http://localhost:8000/reconstruct \
+  --signal data/G-1.csv \
+  --model data/H-1.csv \
+  --apply-gain \
+  --output results/python_saturation.json
+```
+
+```bash
+python client/saturation_test.py \
+  --url http://localhost:8001/reconstruct \
+  --signal data/G-1.csv \
+  --model data/H-1.csv \
+  --apply-gain \
+  --output results/cpp_saturation.json
 ```
 
 ## Relatório

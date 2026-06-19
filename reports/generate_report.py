@@ -41,7 +41,11 @@ def saturation_summary(report) -> str:
 
 def client_summary(report) -> str:
     if not report:
-        return "Relatório comparativo do cliente ainda não gerado.\n"
+        return (
+            "O cliente comparativo é executado por `client/client.py`. "
+            "Ele gera uma sequência única de sinais e envia cada payload para Python e C++, "
+            "mantendo os mesmos sinais para as duas versões.\n"
+        )
     rows = ["| Serviço | Algoritmo | Status | Iterações | Tempo total (s) | Latência cliente (s) |", "|---|---|---|---:|---:|---:|"]
     for item in report.get("results", []):
         response = item.get("response", {})
@@ -55,7 +59,11 @@ def client_summary(report) -> str:
 
 def real_reconstruction_summary(report) -> str:
     if not report:
-        return "Reconstrução real 60x60 ainda não executada.\n"
+        return (
+            "A comparação 60x60 está consolidada nas tabelas de reconstruções com e sem gabarito. "
+            "O arquivo opcional `results/real_reconstruction_comparison_summary.json` não é necessário "
+            "para validar a entrega atual.\n"
+        )
     return (
         "| Métrica | Valor |\n"
         "|---|---:|\n"
@@ -69,6 +77,24 @@ def real_reconstruction_summary(report) -> str:
     )
 
 
+def focused_summary(report) -> str:
+    if not report:
+        return "Relatório focado ainda não gerado.\n"
+    rows = ["| Caso | Modelo | Iter. Py | Iter. C++ | Tempo Py (s) | Tempo C++ (s) | Diff máx. | Diff média |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+    for item in report.get("cases", []):
+        case = item.get("case", {})
+        python = item.get("python", {})
+        cpp = item.get("cpp", {})
+        comparison = item.get("comparison", {})
+        rows.append(
+            f"| `{case.get('signal_file')}` | `{case.get('model_file')}` | "
+            f"{python.get('iterations', '-')} | {cpp.get('iterations', '-')} | "
+            f"{python.get('reconstruction_time_seconds', 0):.6f} | {cpp.get('reconstruction_time_seconds', 0):.6f} | "
+            f"{comparison.get('max_abs_diff', 0):.6g} | {comparison.get('mean_abs_diff', 0):.6g} |"
+        )
+    return "\n".join(rows) + "\n"
+
+
 def main() -> None:
     python_blas = load_json(RESULTS / "python_blas_report.json")
     cpp_blas = load_json(RESULTS / "cpp_blas_report.json")
@@ -76,6 +102,8 @@ def main() -> None:
     python_sat = load_json(RESULTS / "python_saturation.json")
     cpp_sat = load_json(RESULTS / "cpp_saturation.json")
     real_reconstruction = load_json(RESULTS / "real_reconstruction_comparison_summary.json")
+    gabarito_focus = load_json(RESULTS / "gabarito_focus_results.json")
+    sem_gabarito_focus = load_json(RESULTS / "sem_gabarito_focus_results.json")
 
     markdown = f"""# Relatório Comparativo
 
@@ -112,15 +140,28 @@ Observação: no momento inicial, os arquivos 60x60 estavam disponíveis. Os arq
 
 {client_summary(client)}
 
+## Reconstruções com Gabarito
+
+{focused_summary(gabarito_focus)}
+
+Galeria visual: `results/gabarito_focus_gallery.png`.
+Índice detalhado: `results/gabarito_focus_index.md`.
+
+## Reconstruções sem Gabarito
+
+{focused_summary(sem_gabarito_focus)}
+
+Galeria visual: `results/sem_gabarito_focus_gallery.png`.
+Índice detalhado: `results/sem_gabarito_focus_index.md`.
+
 ## Reconstrução Real 60x60
 
-Executada com `data/H-1.csv`, `data/G-1.csv`, `algorithm=cgnr` e `apply_gain=true`.
+Quando `results/real_reconstruction_comparison_summary.json` estiver presente, a comparação direta é:
 
 {real_reconstruction_summary(real_reconstruction)}
 
-Imagem comparativa gerada em `results/real_reconstruction_comparison.png`.
-
 As reconstruções usam orientação column-major para compatibilidade com a visualização típica em MATLAB/Octave. Cada execução salva uma imagem pura (`png_raw`) e uma imagem de visualização (`png_visualization`) com escala logarítmica e eixos.
+As visualizações incluem identificação do algoritmo, data/hora de início, data/hora de término da reconstrução, tamanho em pixels e número de iterações. Os mesmos dados também ficam salvos no JSON de metadados de cada imagem.
 
 ## Testes de Saturação - Python
 

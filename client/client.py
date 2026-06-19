@@ -57,31 +57,36 @@ def post_with_retry(url: str, payload: dict[str, Any], timeout: float, retries: 
 
 def run_client(
     signal_files: list[str],
-    model_file: str,
+    model_files: list[str],
     targets: list[Target],
     requests_count: int,
     output: Path,
     timeout: float,
     retries: int,
+    min_interval: float,
+    max_interval: float,
+    seed: int | None = None,
 ) -> dict[str, Any]:
     """Send random interval requests to both services using the same payloads."""
 
+    rng = random.Random(seed)
     process = psutil.Process()
     started_at = datetime.now(timezone.utc)
     sequence = []
     for index in range(requests_count):
+        signal_file = rng.choice(signal_files)
         sequence.append(
             {
-                "signal_file": signal_files[index % len(signal_files)],
-                "model_file": model_file,
-                "apply_gain": random.choice([True, False]),
-                "algorithm": random.choice(["cgnr", "cgne"]),
+                "signal_file": signal_file,
+                "model_file": choose_compatible_model(signal_file, model_files, rng),
+                "apply_gain": rng.choice([True, False]),
+                "algorithm": rng.choice(["cgnr", "cgne"]),
             }
         )
 
     results = []
     for payload in sequence:
-        interval = random.uniform(1.0, 5.0)
+        interval = rng.uniform(min_interval, max_interval)
         sleep(interval)
         for target in targets:
             sent_at = datetime.now(timezone.utc).isoformat()
@@ -107,6 +112,7 @@ def run_client(
         "ended_at": datetime.now(timezone.utc).isoformat(),
         "requests_count": requests_count,
         "targets": [target.__dict__ for target in targets],
+        "sequence": sequence,
         "memory_rss_bytes": process.memory_info().rss,
         "cpu_percent": process.cpu_percent(interval=None),
         "latency_average_seconds": statistics.mean(latencies) if latencies else None,
@@ -118,19 +124,65 @@ def run_client(
     return report
 
 
+def infer_signal_dimension(signal_file: str) -> int | None:
+    name = Path(signal_file).name.lower()
+    if "30x30" in name:
+        return 30
+    if "60x60" in name or name in {"g-1.csv", "g-2.csv"} or name.startswith(("g-1", "g-2", "a-60")):
+        return 60
+    return None
+
+
+def infer_model_dimension(model_file: str) -> int | None:
+    name = Path(model_file).name.lower()
+    if name.startswith("h-2"):
+        return 30
+    if name.startswith("h-1"):
+        return 60
+    return None
+
+
+def choose_compatible_model(signal_file: str, model_files: list[str], rng: random.Random) -> str:
+    signal_dimension = infer_signal_dimension(signal_file)
+    compatible = [
+        model_file
+        for model_file in model_files
+        if signal_dimension is None or infer_model_dimension(model_file) in {None, signal_dimension}
+    ]
+    if not compatible:
+        raise ValueError(f"Nenhum modelo compatível para o sinal {signal_file}: {model_files}")
+    return rng.choice(compatible)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--signals", nargs="+", default=["data/G-1.csv", "data/G-2.csv"])
     parser.add_argument("--model", default="data/H-1.csv")
+    parser.add_argument("--models", nargs="+", default=None)
     parser.add_argument("--requests", type=int, default=2)
+    parser.add_argument("--min-interval", type=float, default=1.0)
+    parser.add_argument("--max-interval", type=float, default=5.0)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--output", type=Path, default=Path("../results/client_comparison.json"))
     parser.add_argument("--python-url", default="http://localhost:8000/reconstruct")
     parser.add_argument("--cpp-url", default="http://localhost:8001/reconstruct")
     args = parser.parse_args()
+    model_files = args.models if args.models else [args.model]
     targets = [Target("python", args.python_url), Target("cpp", args.cpp_url)]
-    report = run_client(args.signals, args.model, targets, args.requests, args.output, args.timeout, args.retries)
+    report = run_client(
+        args.signals,
+        model_files,
+        targets,
+        args.requests,
+        args.output,
+        args.timeout,
+        args.retries,
+        args.min_interval,
+        args.max_interval,
+        args.seed,
+    )
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 

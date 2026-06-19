@@ -206,12 +206,23 @@ def reconstruct(request: ReconstructionRequest) -> dict:
     else:
         f, stats = cgne(H, g)
     reconstruction_time = perf_counter() - reconstruction_start
+    reconstruction_ended_at = datetime.now(timezone.utc)
 
     output_dir = request.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     stamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
     base_name = f"python_{request.algorithm}_{request.signal_file.stem}_{stamp}"
-    image_info = save_image_outputs(f, output_dir, base_name)
+    image_info = save_image_outputs(
+        f,
+        output_dir,
+        base_name,
+        {
+            "algorithm": request.algorithm.upper(),
+            "started_at": started_at.isoformat(),
+            "ended_at": reconstruction_ended_at.isoformat(),
+            "iterations": stats["iterations"],
+        },
+    )
 
     ended_at = datetime.now(timezone.utc)
     total_time = perf_counter() - wall_start

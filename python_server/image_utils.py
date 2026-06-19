@@ -41,20 +41,28 @@ def vector_to_image(vector: np.ndarray, dimension: int) -> np.ndarray:
     return vector.reshape((dimension, dimension), order="F")
 
 
-def save_visualization_png(image: np.ndarray, path: Path) -> None:
+def save_visualization_png(image: np.ndarray, path: Path, metadata: dict | None = None) -> None:
     """Save a report-style spot-map visualization with title and axes."""
 
     log_image = np.log1p(np.maximum(image, 0.0))
     spot_image = build_spot_map(log_image)
-    fig, ax = plt.subplots(figsize=(4.2, 4.2), dpi=160)
+    fig, ax = plt.subplots(figsize=(4.6, 5.1), dpi=160)
     ax.imshow(spot_image, cmap="gray", origin="upper", vmin=0.0, vmax=1.0, interpolation="nearest")
-    ax.set_title("Log")
+    algorithm = metadata.get("algorithm", "LOG") if metadata else "LOG"
+    ax.set_title(f"Log - {algorithm}")
     ticks = list(range(9, image.shape[0], 10))
     labels = [str(tick + 1) for tick in ticks]
     ax.set_xticks(ticks, labels)
     ax.set_yticks(ticks, labels)
     ax.tick_params(labelsize=8)
-    fig.tight_layout()
+    if metadata:
+        details = (
+            f"Início: {metadata.get('started_at', '-')}\n"
+            f"Fim: {metadata.get('ended_at', '-')}\n"
+            f"Pixels: {metadata.get('dimension', '-')} | Iterações: {metadata.get('iterations', '-')}"
+        )
+        fig.text(0.5, 0.015, details, ha="center", va="bottom", fontsize=7)
+    fig.tight_layout(rect=(0, 0.10 if metadata else 0, 1, 1))
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
 
@@ -114,7 +122,7 @@ def build_spot_map(score: np.ndarray) -> np.ndarray:
     return spot_image
 
 
-def save_image_outputs(vector: np.ndarray, output_dir: Path, base_name: str) -> dict:
+def save_image_outputs(vector: np.ndarray, output_dir: Path, base_name: str, metadata: dict | None = None) -> dict:
     """Save reconstructed vector as oriented CSV, raw PNG and visualization PNG."""
 
     dimension = infer_image_dimension(vector.size)
@@ -128,7 +136,9 @@ def save_image_outputs(vector: np.ndarray, output_dir: Path, base_name: str) -> 
         writer.writerows(image.tolist())
 
     plt.imsave(png_raw_path, normalize_to_uint8(image), cmap="gray")
-    save_visualization_png(image, png_visualization_path)
+    visualization_metadata = dict(metadata or {})
+    visualization_metadata.setdefault("dimension", f"{dimension}x{dimension}")
+    save_visualization_png(image, png_visualization_path, visualization_metadata)
 
     return {
         "dimension": f"{dimension}x{dimension}",

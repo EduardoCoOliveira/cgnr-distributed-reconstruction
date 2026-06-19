@@ -466,6 +466,20 @@ const std::vector<std::string>& glyph(char c) {
     static const std::vector<std::string> cap_l{"100", "100", "100", "100", "111"};
     static const std::vector<std::string> cap_o{"111", "101", "101", "101", "111"};
     static const std::vector<std::string> cap_g{"111", "100", "101", "101", "111"};
+    static const std::vector<std::string> cap_a{"010", "101", "111", "101", "101"};
+    static const std::vector<std::string> cap_c{"111", "100", "100", "100", "111"};
+    static const std::vector<std::string> cap_d{"110", "101", "101", "101", "110"};
+    static const std::vector<std::string> cap_e{"111", "100", "111", "100", "111"};
+    static const std::vector<std::string> cap_i{"111", "010", "010", "010", "111"};
+    static const std::vector<std::string> cap_n{"101", "111", "111", "111", "101"};
+    static const std::vector<std::string> cap_p{"111", "101", "111", "100", "100"};
+    static const std::vector<std::string> cap_r{"110", "101", "110", "101", "101"};
+    static const std::vector<std::string> cap_s{"111", "100", "111", "001", "111"};
+    static const std::vector<std::string> cap_t{"111", "010", "010", "010", "010"};
+    static const std::vector<std::string> cap_x{"101", "101", "010", "101", "101"};
+    static const std::vector<std::string> cap_z{"111", "001", "010", "100", "111"};
+    static const std::vector<std::string> dash{"000", "000", "111", "000", "000"};
+    static const std::vector<std::string> colon{"000", "010", "000", "010", "000"};
     static const std::vector<std::string> low_o{"000", "111", "101", "101", "111"};
     static const std::vector<std::string> low_g{"011", "100", "101", "011", "001", "110"};
     static const std::vector<std::string> blank{"000", "000", "000", "000", "000"};
@@ -473,6 +487,9 @@ const std::vector<std::string>& glyph(char c) {
         case '0': return zero; case '1': return one; case '2': return two; case '3': return three; case '4': return four;
         case '5': return five; case '6': return six; case '7': return seven; case '8': return eight; case '9': return nine;
         case 'L': return cap_l; case 'O': return cap_o; case 'G': return cap_g;
+        case 'A': return cap_a; case 'C': return cap_c; case 'D': return cap_d; case 'E': return cap_e; case 'I': return cap_i;
+        case 'N': return cap_n; case 'P': return cap_p; case 'R': return cap_r; case 'S': return cap_s; case 'T': return cap_t;
+        case 'X': return cap_x; case 'Z': return cap_z; case '-': return dash; case ':': return colon;
         case 'o': return low_o; case 'g': return low_g; default: return blank;
     }
 }
@@ -488,7 +505,7 @@ void draw_text(std::vector<unsigned char>& pixels, std::size_t width, std::size_
                 }
             }
         }
-        cursor += 4 * scale;
+        cursor += (g.empty() ? 4 : g.front().size() + 1) * scale;
     }
 }
 
@@ -496,13 +513,21 @@ void save_png(const std::vector<double>& f, std::size_t dim, const std::string& 
     write_png_pixels(normalize_oriented(f, dim, false), dim, dim, path);
 }
 
-void save_visualization_png(const std::vector<double>& f, std::size_t dim, const std::string& path) {
+void save_visualization_png(
+    const std::vector<double>& f,
+    std::size_t dim,
+    const std::string& path,
+    const std::string& algorithm,
+    const std::string& started_at,
+    const std::string& ended_at,
+    int iterations
+) {
     const std::size_t scale = 4;
     const std::size_t plot = dim * scale;
     const std::size_t left = 42;
     const std::size_t top = 28;
     const std::size_t width = left + plot + 18;
-    const std::size_t height = top + plot + 38;
+    const std::size_t height = top + plot + 72;
     std::vector<unsigned char> canvas(width * height, 255);
     const std::vector<unsigned char> image = normalize_oriented(f, dim, true);
     draw_text(canvas, width, left + plot / 2 - 12, 8, "LOG", 0, 2);
@@ -521,6 +546,11 @@ void save_visualization_png(const std::vector<double>& f, std::size_t dim, const
         draw_text(canvas, width, x - 5, top + plot + 9, std::to_string(tick), 0, 1);
         draw_text(canvas, width, 14, y - 4, std::to_string(tick), 0, 1);
     }
+    const std::size_t meta_y = top + plot + 24;
+    draw_text(canvas, width, 4, meta_y, "ALG " + algorithm, 0, 1);
+    draw_text(canvas, width, 4, meta_y + 9, "START " + started_at, 0, 1);
+    draw_text(canvas, width, 4, meta_y + 18, "END " + ended_at, 0, 1);
+    draw_text(canvas, width, 4, meta_y + 27, "PIX " + std::to_string(dim) + "X" + std::to_string(dim) + " ITER " + std::to_string(iterations), 0, 1);
     write_png_pixels(canvas, width, height, path);
 }
 
@@ -613,6 +643,7 @@ ReconstructionResult reconstruct(const ReconstructionInput& input) {
     const auto rec_start = std::chrono::steady_clock::now();
     SolverStats stats = input.algorithm == "cgne" ? solve_cgne(H, g) : solve_cgnr(H, g);
     result.reconstruction_time_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - rec_start).count();
+    result.ended_at = utc_now();
 
     const std::size_t dim = image_dimension(stats.f.size());
     std::filesystem::create_directories(input.output_dir);
@@ -623,9 +654,8 @@ ReconstructionResult reconstruct(const ReconstructionInput& input) {
     result.metadata_file = base + "_metadata.json";
     save_csv_image(stats.f, dim, result.csv_output);
     save_png(stats.f, dim, result.png_output);
-    save_visualization_png(stats.f, dim, result.png_visualization_output);
+    save_visualization_png(stats.f, dim, result.png_visualization_output, result.algorithm, result.started_at, result.ended_at, stats.iterations);
 
-    result.ended_at = utc_now();
     result.total_time_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - wall_start).count();
     result.image_dimension = std::to_string(dim) + "x" + std::to_string(dim);
     result.iterations = stats.iterations;

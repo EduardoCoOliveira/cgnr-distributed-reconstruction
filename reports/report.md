@@ -1,6 +1,6 @@
 # Relatório Comparativo
 
-Gerado em 2026-06-18T13:31:15.100187+00:00.
+Gerado em 2026-06-19T01:06:21.461886+00:00.
 
 ## Linguagens Utilizadas
 
@@ -23,46 +23,92 @@ Observação: no momento inicial, os arquivos 60x60 estavam disponíveis. Os arq
 
 ## Resultados dos Testes BLAS - Python
 
-Relatório ainda não gerado.
+| Operação | Tempo (s) | Dimensão | Memória RSS (bytes) |
+|---|---:|---|---:|
+| MN = M * N | 0.000310 | [128, 128] | 40960000 |
+| aM = a * M (scalar) | 0.000064 | [128, 128] | 41156608 |
+| aM = a * M (vector left) | 0.000013 | [128] | 41193472 |
+| Ma = M * a (scalar) | 0.000009 | [128, 128] | 41193472 |
+| Ma = M * a (vector right) | 0.000004 | [128] | 41193472 |
 
 
 ## Resultados dos Testes BLAS - C++
 
-Relatório ainda não gerado.
+| Operação | Tempo (s) | Dimensão | Memória RSS (bytes) |
+|---|---:|---|---:|
+| MN = M * N | 0.002101 | 512x512 | 17821696 |
+| aM = a * M (scalar) | 0.000166 | 512x512 | 17952768 |
+| aM = a * M (vector left) | 0.000059 | 1x512 | 17952768 |
+| Ma = M * a (scalar) | 0.000146 | 512x512 | 17952768 |
+| Ma = M * a (vector right) | 0.000048 | 512x1 | 17952768 |
 
 
 ## Resultados CGNR/CGNE e Comparação Python vs C++
 
-Relatório comparativo do cliente ainda não gerado.
+| Serviço | Algoritmo | Status | Iterações | Tempo total (s) | Latência cliente (s) |
+|---|---|---|---:|---:|---:|
+| python | CGNR | ok | 1 | 15.123008 | 15.130473 |
+| cpp | CGNR | ok | 1 | 19.928005 | 19.930465 |
+| python | CGNR | ok | 1 | 1.793088 | 1.797414 |
+| cpp | CGNR | ok | 1 | 2.975076 | 2.976904 |
 
+
+## Reconstruções com Gabarito
+
+| Caso | Modelo | Iter. Py | Iter. C++ | Tempo Py (s) | Tempo C++ (s) | Diff máx. | Diff média |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `data/g-30x30-1.csv` | `data/H-2.csv` | 10 | 10 | 0.139796 | 0.123614 | 2.91038e-11 | 9.84776e-13 |
+| `data/g-30x30-2.csv` | `data/H-2.csv` | 10 | 10 | 0.137905 | 0.160935 | 2.91038e-11 | 1.08937e-12 |
+| `data/G-1.csv` | `data/H-1.csv` | 10 | 10 | 0.891481 | 0.813838 | 5.82077e-11 | 2.13143e-12 |
+| `data/G-2.csv` | `data/H-1.csv` | 10 | 10 | 0.881286 | 0.979363 | 8.73115e-11 | 4.26074e-12 |
+
+
+Galeria visual: `results/gabarito_focus_gallery.png`.
+Índice detalhado: `results/gabarito_focus_index.md`.
+
+## Reconstruções sem Gabarito
+
+| Caso | Modelo | Iter. Py | Iter. C++ | Tempo Py (s) | Tempo C++ (s) | Diff máx. | Diff média |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `data/A-30x30-1.csv` | `data/H-2.csv` | 10 | 10 | 0.197419 | 0.165685 | 0.4375 | 0.0265846 |
+| `data/A-60x60-1.csv` | `data/H-1.csv` | 10 | 10 | 0.864147 | 1.011152 | 0.00219727 | 0.000135789 |
+
+
+Galeria visual: `results/sem_gabarito_focus_gallery.png`.
+Índice detalhado: `results/sem_gabarito_focus_index.md`.
 
 ## Reconstrução Real 60x60
 
-Executada com `data/H-1.csv`, `data/G-1.csv`, `algorithm=cgnr` e `apply_gain=true`.
+Quando `results/real_reconstruction_comparison_summary.json` estiver presente, a comparação direta é:
 
-| Métrica | Valor |
-|---|---:|
-| Formato | [60, 60] |
-| Diferença máxima absoluta Python vs C++ | 8.731149137020e-11 |
-| Diferença média absoluta Python vs C++ | 2.901826236862e-12 |
-| Mínimo Python | 0.000000 |
-| Máximo Python | 0.000000 |
-| Mínimo C++ | 0.000000 |
-| Máximo C++ | 0.000000 |
+A comparação 60x60 está consolidada nas tabelas de reconstruções com e sem gabarito. O arquivo opcional `results/real_reconstruction_comparison_summary.json` não é necessário para validar a entrega atual.
 
-
-Imagem comparativa gerada em `results/real_reconstruction_comparison.png`.
 
 As reconstruções usam orientação column-major para compatibilidade com a visualização típica em MATLAB/Octave. Cada execução salva uma imagem pura (`png_raw`) e uma imagem de visualização (`png_visualization`) com escala logarítmica e eixos.
+As visualizações incluem identificação do algoritmo, data/hora de início, data/hora de término da reconstrução, tamanho em pixels e número de iterações. Os mesmos dados também ficam salvos no JSON de metadados de cada imagem.
 
 ## Testes de Saturação - Python
 
-Relatório ainda não gerado.
+| Concorrência | Tempo médio (s) | Tempo máx. (s) | Throughput (req/s) | Erros |
+|---:|---:|---:|---:|---:|
+| 1 | 0.102618 | 0.102618 | 9.683318 | 0 |
+| 2 | 0.283031 | 0.335627 | 5.896139 | 0 |
+| 4 | 0.110593 | 0.291405 | 13.468763 | 2 |
+| 8 | 0.082900 | 0.353494 | 22.574623 | 6 |
+| 16 | 0.052677 | 0.527631 | 30.010050 | 14 |
+| 32 | 0.021702 | 0.229069 | 138.953808 | 30 |
 
 
 ## Testes de Saturação - C++
 
-Relatório ainda não gerado.
+| Concorrência | Tempo médio (s) | Tempo máx. (s) | Throughput (req/s) | Erros |
+|---:|---:|---:|---:|---:|
+| 1 | 0.080997 | 0.080997 | 12.166265 | 0 |
+| 2 | 0.009027 | 0.010414 | 170.633978 | 0 |
+| 4 | 0.007475 | 0.011682 | 238.477626 | 2 |
+| 8 | 0.013399 | 0.040531 | 171.171758 | 6 |
+| 16 | 0.011273 | 0.055297 | 191.173208 | 11 |
+| 32 | 0.010281 | 0.038277 | 501.799673 | 27 |
 
 
 ## Controle de Saturação
